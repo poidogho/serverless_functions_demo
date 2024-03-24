@@ -72,7 +72,7 @@ user-repository --> SQLite
 
 ## Entity Relationship Diagram
 
-![erd](../images/erd.png)
+![erd](./images/erd.png)
 
 ## Running the Application
 To run the application locally:
