@@ -1,0 +1,87 @@
+service: beAssignment
+frameworkVersion: '3'
+configValidationMode: error
+
+provider:
+  name: aws
+  runtime: nodejs16.x
+  memorySize: 256
+  region: ca-central-1
+
+useDotenv: true
+
+functions:
+  getUserById:
+    handler: handler.getUserByIdHandler
+    name: beAssignment-getUserById
+    events:
+      - httpApi:
+          path: /users/{userId}
+          method: get
+  updateUser:
+    handler: handler.updateUserHandler
+    name: beAssignment-updateUserHandler
+    events:
+      - httpApi:
+          path: /users/{userId}
+          method: patch
+  deleteUser:
+    handler: handler.deleteUserHandler
+    name: beAssignment-deleteUserHandler
+    events:
+      - httpApi:
+          path: /users/{userId}
+          method: delete
+  getAllUsers:
+    handler: handler.getAllUsersHandler
+    name: beAssignment-getAllUsers
+    events:
+      - httpApi:
+          path: /users
+          method: get
+  getUserPosts:
+    handler: handler.getUserPostsHandler
+    name: beAssignment-getUserPosts
+    events:
+      - httpApi:
+          path: /users/{userId}/posts
+          method: get
+  createPost:
+    handler: handler.createPostHandler
+    name: beAssignment-createPost
+    events:
+      - httpApi:
+          path: /users/{userId}/posts
+          method: post
+  updatePost:
+    handler: handler.updatePostHandler
+    name: beAssignment-updatePost
+    events:
+      - httpApi:
+          path: /users/{userId}/posts/{postId}
+          method: patch
+  deletePost:
+    handler: handler.deletePostHandler
+    name: beAssignment-deletePost
+    events:
+      - httpApi:
+          path: /users/{userId}/posts/{postId}
+          method: delete
+  getPostById:
+    handler: handler.getPostByIdHandler
+    name: beAssignment-getPostById
+    events:
+      - httpApi:
+          path: /posts/{postId}
+          method: get
+  searchPost:
+    handler: handler.searchPostsHandler
+    name: beAssignment-searchPosts
+    events:
+      - httpApi:
+          path: /posts
+          method: post
+plugins:
+  - serverless-offline
+  - serverless-plugin-typescript
+  - serverless-dotenv-plugin
