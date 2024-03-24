@@ -1,187 +1,170 @@
-# Click to see my submission notes [the detailed documentation](docs/more_info.md).
-<br />
-<br />
-<br />
-<br />
-<br />
+# Quick Summary
+This repository focuses on creating a CRUD application for managing users and their associated posts using TypeORM, Serverless, and Zod for validation.
 
-# Welcome to the VendorPM BE Technical Assessment
+```mermaid
+graph TB
 
-This repo represents a basic shell of a Typescript app whose end goal will be for it to manage CRUD for users and
-some related info.
+CustomQueue([Custom Message Queue])
+SQLite[(SQLite)]
 
-The code is incomplete, and your task will be to take what is currently in the repo and add required functionality based
-on a list of requirements in the project's README file. These requirements will be split into a few sections that
-increase in difficulty based on what level of position you are applying to:
+subgraph Entity
+    User[User]
+    Post[Post]
+end
 
-- Main (These are the base level tasks and everyone is expected to complete these)
-- Intermediate
-- Senior
-- Bonus (Anyone can attempt these, and are *not* required to be completed)
+subgraph Services
+    post-service[Post]
+    user-service[User]
+end
 
-You will be expected to complete only the sections according what level you are applying to and below. IE: If you are
-applying to an Intermediate position you will be expected to complete the Main and Intermediate sections, you are *not*
-expected to attempt the Senior requirements, but someone applying to a Senior position will be expected to complete
-all 3.
+subgraph Repository
+    post-repository[Post]
+    user-repository[User]
+end
 
-In terms of the Bonus section, these tasks are *not* required to be completed for any level position, they are purely
-there to give you additional ways to show off your skill set if you wish to.
+    subgraph EventBroker
+        subgraph Topics
+            Post[Post]
+            User[User]
+        end
+        subgraph Subscribers
+            Post[Post]
+            User[User]
+        end
+    end
 
-## Prerequisites
+subgraph Handlers
+    subgraph "API POST /users"
+        users-api[User]
+    end
+    
+    subgraph "API GET /users"
+        users-api[User]
+    end
+    
+     subgraph "API GET /users/:userId"
+        users-api[User]
+    end
+    
+     subgraph "API POST /users"
+        post-api[Post]
+    end
+    
+end
 
-- Read the **README** fully.
-- This application is built using the following main tech:
-    - [TypeORM](https://github.com/typeorm/typeorm)
-    - [Serverless](https://www.serverless.com/)
-    - [Zod](https://github.com/colinhacks/zod)
+users-api ---> user-service
+post-api ---> post-service
+CustomQueue <--- post-service
+CustomQueue <--- user-service
+Subscribers <--- post-repository
+Subscribers <--- user-repository
 
-### Windows
+user-service --> CustomQueue
+post-service --> CustomQueue
 
-If you are running a windows machine then note that you will have to set up and run this application out
-of [WSL](https://en.wikipedia.org/wiki/Windows_Subsystem_for_Linux). Setting that up is left as an exercise for the
-applicant as it is way out of scope of this assignment,
-but [here are the instructions from microsoft](https://learn.microsoft.com/en-us/windows/wsl/install).
+CustomQueue --> Topics
+CustomQueue --> Subscribers
+Topics --> Subscribers
+post-repository --> SQLite
+user-repository --> SQLite
+```
 
-IDE/editor setup will also need to be changed to allow for WSL based development:
-  * Jetbrains (specifically webstorm link but should apply to all of them): https://www.jetbrains.com/help/webstorm/how-to-use-wsl-development-environment-in-product.html
-  * VSCode: https://code.visualstudio.com/blogs/2019/09/03/wsl2
 
-### To run the application for the first time:
+## Entity Relationship Diagram
+
+![erd](../images/erd.png)
+
+## Running the Application
+To run the application locally:
 
 ```bash
-yarn
+yarn install
 yarn migrate:run
+yarn seed
 yarn start
 ```
 
-The `yarn start` command will hot-reload the code for you during development as well.
-
-If you're wondering where to start, the `./handler.ts` file is the main entrypoint that serverless looks into to
-reference handlers for specific URIs from the `serverless.yml` file.
-
-## The Requirements
-
-### Main Requirements
-
-- Change `User` model from storing the `age` field as a number to instead storing a birthdate field
-    - `User` model should still have an `age` getter that calculates the age in years, and this field ***must*** still
-      exist in json output
-    - You can assume that all existing user birthdays are on Jan 1st of the appropriate year based on their age
-- Add a GET handler to output all available users in the system
-- Add a handler to update a `User`
-    - Only the firstName, lastName, and birthdate fields should be editable, attempts to edit other fields should result
-      in a 400 response
-    - either a PUT or PATCH based approach here will be accepted
-- Add a DELETE handler to delete a `User`
-
-### Intermediate Requirements
-
-- Add a `Post` model representing text posts made by a `User`
-    - Add all CRUD Routes for these `Post` objects
-    - A `Post` should capture the following info:
-        - Title
-        - Post body
-        - Post date
-        - Last edited date (You can assume only the `User` that created the post can edit)
-    - Setup a One-to-Many relationship between `Posts` and `Users` on each of their models
-- Add a route to get all `Posts` for a specific `User` by their id
-- For the endpoint you added to fetch all `Users`, add pagination to that endpoint
-    - You can assume any query parameter structure for this as you need as long as the requester can specify
-        - page size
-        - current requested page #
-    - The response body should include:
-        - how many pages are left
-        - the results themselves
-- Add in [Winston](https://github.com/winstonjs/winston) as a logger and change all log points to output JSON logs
-  - Also add logging instrumentation to all routes for error/warning cases.
-
-### Senior Requirements
-
-- Add a POST endpoint to search for `Posts` matching against their title.
-    - Full fuzzy searching is not required, simple wildcard matching is acceptable
-- Add a fake "Event Service" module
-    - The fake event service should behave like kafka/eventstore in that events are raised in 'topics'
-    - wire it up to each of the CUD (no R) handlers to raise events for each of these.
-    - The api for raising events should enforce at the type level and **runtime** level that events raised have
-      a `version` and `type` field.
-    - The event service should export some kind of mock interface/mode that allows for integration tests to validate
-      that events get raised for the correct topic
-
-### Bonus Requirements
-
-Completing these requirements is *not* required, and will only be counted against your evaluation assuming you have
-completed the other requirements for your role.
-
-You also don't have to complete **all** these bonus ones either, they are scored individually
-
-- Update the data-source to allow loading either Postgres or Sqlite based on the `NODE_ENV` env variable
-    - `production` = postgres mode
-    - anything else = sqlite mode
-    - Migrations should be changed from Raw sql to typeorm's generic create/update table statements to allow for
-      migrations to run on both systems
-    - Change the type of the User::id field to be a UUID
-        - It's safe to assume you do not have to create a migration to handle the int -> uuid change here, just update
-          the init migration.
-- Add a GitHub Action that on commit checks to ensure the tests and lint checks are still passing
-- Add a seeds setup for local development and you:
-    - Should add a seed for every model
-    - Should remove the existing "fake" seed setup for `Users` in the init migration
-- Write a TS utility class that models the common "Result" type.
-    - expected functionality includes:
-        - a way of mapping over the success value
-        - chaining map calls
-        - a fromPromise helper
-        - a way to extract the value out of the Result
-        - Full TS type checking; ie solutions that have the extracted value typed as any/unknown will not be counted
-    - You do not have to actually use it directly in any endpoints (unless you want to), but this ***must*** be
-      extensively unit tested
-    - If you've never heard of this type you can use the [Rust version](https://doc.rust-lang.org/std/result/) for
-      inspiration (other approaches such as a monadic approach will be accepted as well)
-
-`Note:` not all bonus tasks are weighted evenly, take that into account when choosing which ones to do
-
 ## Testing
 
-The repo comes preconfigured with a testing setup that allows for integration testing of endpoints with an in-memory DB.
-You will be expected to write integration style tests for the endpoints you add/edit. Please
-see [getUserById.test.ts](./test/handlers/getUserById.test.ts) for an example setup/teardown.
+Integration tests are set up using Jest with an in-memory database. To run the tests:
 
-The init migration also acts as a seed for the `User` model creating 4 dummy values that you can/should rely on being
-there for the tests.
+```bash
+yarn test
+```
 
-## Rules
+## Seeding the Database
 
-- You can use any library that you want/need as long as you write out comments justifying your choices however:
-    - You cannot pull in libraries that complete any of the bonus tasks automatically for you (ie you can't
-      just import `@badrap/result` and claim you completed the Result type bonus task)
-    - You cannot remove any already used libraries, IE: no converting away from TypeORM or Serverless to another tech
-      stack
-- All endpoints must be crafted in a RESTful manner and follow REST URI scheme rules as well as return JSON responses.
-- TypeORM's migration style must be used, you cannot rely on or use the `syncronize` modes and *new* migrations must be
-  generated for any DB changes you make
-    - You can assume all migrations will be run before the app starts up
-    - The "down" side of migrations must be generated as well. You should be able to run all the migrations up, then
-      down, then up again without failure
-    - Do not edit the `init` migration to include any changes, generate new ones as needed; EXCEPT in the case of the
-      bonus tasks that mention editing the init migration directly.
+To seed the database with initial data:
 
-## Considerations / Recommendations
+```bash
+yarn seed
+```
 
-- Treat this like you are building a feature for a pre-existing microservice that is being used by other services and
-  all the considerations that brings.
-- This is your opportunity to show what you can bring to our engineering team as a BE developer.
-- Write clean, reusable and performant code.
+This command runs the seeding scripts that populate the database with initial data for development and testing purposes.
 
-## Evaluation
 
-_The assessment will be evaluated based on the following:_
+## Environment Setup
 
-- Code
-    - Quality
-    - Structure
-    - Consistency
-    - Comments/Documentation
-    - Readability
-    - Performance
-    - Test Coverage
-- Bonus Tasks
+Before running the application, you'll need to set up your environment variables. Create a `.env` file in the root directory of the project with the following contents:
+
+```env
+NODE_ENV=production | development
+POSTGRES_HOST=yourhostdetails
+POSTGRES_PORT=5432
+POSTGRES_USER=your_username
+POSTGRES_PASSWORD=your_password
+POSTGRES_DB=your_database
+```
+
+Replace **`your_username`**, **`your_password`**, and **`your_database`** with your PostgreSQL credentials. The application will use these settings to connect to your PostgreSQL instance.
+
+- **`NODE_ENV`** - This determines the application mode. Use **`development`** for development settings, **`test`** for testing (however, I mocked the repository data for the tests created), and **`production`** for production settings (set up to use postgresDB).
+- **`POSTGRES_HOST`** - The hostname where your PostgreSQL database is running.
+- **`POSTGRES_PORT`** - The port number on which your PostgreSQL server is listening.
+- **`POSTGRES_USER`** - Your PostgreSQL database username.
+- **`POSTGRES_PASSWORD`** - Your PostgreSQL database password.
+- **`POSTGRES_DB`** - The specific database name to connect to within your PostgreSQL instance.
+
+For production environments, ensure that you set NODE_ENV=production to use PostgreSQL. The application will switch to SQLite for other NODE_ENV values.
+
+## Implemented Solutions
+The following sections detail the solutions implemented for the required tasks based on the application level.
+
+### Main Tasks
+
+- Changed the `User` entity to store a `birthdate` instead of `age`. The `age` getter calculates the age based on the `birthdate`.
+- Added a GET endpoint at `/users` to retrieve all users in JSON format, including the calculated `age` field.
+- Implemented a PATCH endpoint at `/users/:id` to update user details. Only `firstName`, `lastName`, and `birthdate` are editable.
+- Created a DELETE endpoint at `/users/:id` to remove a user from the database.
+
+### Intermediate Tasks
+
+- Created a `Post` entity to represent user posts with all CRUD operations.
+- Established a One-to-Many relationship between `Users` and `Posts`.
+- Added a GET endpoint at `/users/:userId/posts` to fetch all posts by a specific user.
+- Implemented pagination for the user listing endpoint, with query parameters for page size and number.
+- Added a GET endpoint at `/posts/:postId` to fetch a specific post.
+- Added a DELETE endpoint at `users/:userId/posts/:postId` to delete a post by its user. My assumption here is that we are not implementig an authorization middleware. So in that case, I could only fetch the `userId` from the `api` path
+- Implemented a PATCH endpoint at `/users/:userId/posts/postId` to update a post by ts user. The `title`, and `body` are editable.
+- Integrated Winston for structured JSON logging across the application.
+
+### Senior Tasks
+
+- Added a POST search endpoint at `/posts/` for querying posts by title.
+- Created a mock "Event Service" to simulate event publishing to topics with `version` and `type` enforcement at runtime.
+
+### Bonus Tasks
+
+- Configured the data-source to switch between PostgreSQL and SQLite based on the `NODE_ENV`.
+- Set up GitHub Actions to ensure passing tests and lint checks on every commit.
+- Added seed scripts for initializing the database with test data.
+
+
+## **Considerations**
+
+- All code changes have been made with consideration to the existing serverless architecture.
+- For deleting a post, I chose to use the path `/users/:id/post/:postId`. This is because my assumpton is that only a `user` can delete their posts and for this set up, I did not implement a middleware that handles authorization. Hence I get the `userId` from the api path.
+- New features have been designed to be reusable, efficient, and performant.
+- TypeORM migrations have been used exclusively for all database changes.
+- RESTful principles have been followed for all API endpoints.
+- Appropriate test cases have been created
